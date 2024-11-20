@@ -53,27 +53,27 @@ const getDataPortfolioUser = async (req: Request): Promise<Response> => {
         status: 404,
       });
     }
-    const { data: totalInvertidoData, error: totalInvertidoError } = await supabase
-    .from("transaccion")
-    .select(`
-      activo!inner(cantidad, precio)
-    `)
-    .eq("operacion", "buy")
-    .eq("portfolio.id_user", userId)
-    .join("portfolio", "transaccion.id_portf", "portfolio.id");
+  //   const { data: totalInvertidoData, error: totalInvertidoError } = await supabase
+  //   .from("transaccion")
+  //   .select(`
+  //     activo!inner(cantidad, precio)
+  //   `)
+  //   .eq("operacion", "buy")
+  //   .eq("portfolio.id_user", userId)
+  //   .join("portfolio", "transaccion.id_portf", "portfolio.id");
 
   
-  if (totalInvertidoError) {
-    console.error("Error al obtener el total invertido:", totalInvertidoError);
-  }
-  const totalInvertido = totalInvertidoData.reduce((sum, transaction) => {
-    return sum + (transaction.activo.cantidad * transaction.activo.precio);
-  }, 0);
+  // if (totalInvertidoError) {
+  //   console.error("Error al obtener el total invertido:", totalInvertidoError);
+  // }
+  // const totalInvertido = totalInvertidoData.reduce((sum, transaction) => {
+  //   return sum + (transaction.activo.cantidad * transaction.activo.precio);
+  // }, 0);
 
 
     // Paso 3: Responder con el dinero disponible
     return new Response(
-      JSON.stringify({ dineroDisponible: portfolioData.dineroDisponible, totalInvertido }),
+      JSON.stringify({ dineroDisponible: portfolioData.dineroDisponible }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
