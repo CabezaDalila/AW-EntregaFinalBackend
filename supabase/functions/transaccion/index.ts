@@ -53,27 +53,33 @@ const getDataPortfolioUser = async (req: Request): Promise<Response> => {
         status: 404,
       });
     }
-  //   const { data: totalInvertidoData, error: totalInvertidoError } = await supabase
-  //   .from("transaccion")
-  //   .select(`
-  //     activo!inner(cantidad, precio)
-  //   `)
-  //   .eq("operacion", "buy")
-  //   .eq("portfolio.id_user", userId)
-  //   .join("portfolio", "transaccion.id_portf", "portfolio.id");
+    // // Primero obtener todas las transacciones de compra del usuario
+    // const { data: transaccionesData, error: transaccionesError } =
+    //   await supabase
+    //     .from("transaccion")
+    //     .select(`id_activo, activo (precio,cantidad)`)
+    //     .eq("operacion", "buy")
+    //     .eq("id_portf", portfolioData.id); // Usamos el id del portfolio que ya tenemos
 
-  
-  // if (totalInvertidoError) {
-  //   console.error("Error al obtener el total invertido:", totalInvertidoError);
-  // }
-  // const totalInvertido = totalInvertidoData.reduce((sum, transaction) => {
-  //   return sum + (transaction.activo.cantidad * transaction.activo.precio);
-  // }, 0);
+    // if (transaccionesError) {
+    //   console.error("Error al obtener transacciones:", transaccionesError);
+    //   return new Response("Error al obtener transacciones", {
+    //     headers: corsHeaders,
+    //     status: 500,
+    //   });
+    // }
 
+    // // Calculamos el total invertido
+    // const totalInvertido = transaccionesData?.reduce((sum, transaction) => {
+    //   return sum + (transaction.activo.precio * transaction.activo.cantidad);
+    // }, 0) || 0;
 
-    // Paso 3: Responder con el dinero disponible
+    // Devolvemos tanto el dinero disponible como el total invertido
     return new Response(
-      JSON.stringify({ dineroDisponible: portfolioData.dineroDisponible }),
+      JSON.stringify({
+        dineroDisponible: portfolioData.dineroDisponible
+        // ,totalInvertido: totalInvertido,
+      }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -93,7 +99,7 @@ const putBuy = async (req: Request): Promise<Response> => {
   try {
     console.log("Request recibido:", req);
     const body = await req.json();
-    const { ticker, precio, cantidad, email } = body;
+    const { tipoTransaccion, ticker, cantidad,precio, email } = body;
 
     if (!ticker || !precio || !cantidad) {
       return new Response("Faltan datos de la compra", {
@@ -138,7 +144,7 @@ const putBuy = async (req: Request): Promise<Response> => {
 
     const nuevoDineroDisponible = portfolioData.dineroDisponible -
       (precio * cantidad);
-
+    //modificas el dinero disponible
     await supabase
       .from("portfolio")
       .update({ dineroDisponible: nuevoDineroDisponible })
@@ -160,33 +166,12 @@ const putBuy = async (req: Request): Promise<Response> => {
     }
     const portfolioId = Number(portfData.id);
 
-    const activo = {
-      precio: precio,
-      tipo: "stock",
+    const transaccionBuy = {
+      tipoTransaccion: "buy",
       ticker: ticker,
       cantidad: cantidad,
-    };
-    const { data: activoData, error: activoError } = await supabase
-      .from("activo")
-      .insert(activo)
-      .select()
-      .single();
-
-    if (activoError || !activoData) {
-      console.error("Detalles completos del error:", activoError);
-      console.error("Datos del activo:", activo);
-      return new Response(`Error al insertar activo: ${activoError?.message}`, {
-        headers: corsHeaders,
-        status: 500,
-      });
-    }
-
-    const activId = Number(activoData.id);
-
-    const transaccionBuy = {
-      operacion: "buy",
-      id_portf: portfolioId, // es una FK
-      id_activo: activId, //es una FK
+      precio:precio,
+      id_portfolio:portfolioId
     };
 
     const { data: transactionData, error: transactionError } = await supabase
