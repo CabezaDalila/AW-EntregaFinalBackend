@@ -53,38 +53,52 @@ const getDataPortfolioUser = async (req: Request): Promise<Response> => {
         status: 404,
       });
     }
-    // // Primero obtener todas las transacciones de compra del usuario
-    // const { data: transaccionesData, error: transaccionesError } =
-    //   await supabase
-    //     .from("transaccion")
-    //     .select(`id_activo, activo (precio,cantidad)`)
-    //     .eq("operacion", "buy")
-    //     .eq("id_portf", portfolioData.id); // Usamos el id del portfolio que ya tenemos
+    // idPorfolio
+    const { data: portfData, error: portfError } = await supabase
+      .from("portfolio")
+      .select("id")
+      .eq("id_user", userId)
+      .single();
 
-    // if (transaccionesError) {
-    //   console.error("Error al obtener transacciones:", transaccionesError);
-    //   return new Response("Error al obtener transacciones", {
-    //     headers: corsHeaders,
-    //     status: 500,
-    //   });
-    // }
-
-    // // Calculamos el total invertido
-    // const totalInvertido = transaccionesData?.reduce((sum, transaction) => {
-    //   return sum + (transaction.activo.precio * transaction.activo.cantidad);
-    // }, 0) || 0;
-
-    // Devolvemos tanto el dinero disponible como el total invertido
-    return new Response(
-      JSON.stringify({
-        dineroDisponible: portfolioData.dineroDisponible
-        // ,totalInvertido: totalInvertido,
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      },
-    );
+    if (portfError || !portfData) {
+      console.error("Error al obtener el id del portfolio:", portfError);
+      return new Response("Error al obtener portfolio", {
+        headers: corsHeaders,
+        status: 500,
+      });
+    }
+    const portfolioId = Number(portfData.id);
+    const { data: transaccionData, error: transaccionError } = await supabase
+    .from("transaccion")
+    .select("*")
+    .eq("id_portfolio", portfolioId)
+    .eq("tipoTransaccion", "buy");
+  
+  if (transaccionError) {
+    console.error("Error al calcular el total invertido:", transaccionError);
+    return new Response("Error al calcular total invertido", {
+      headers: corsHeaders,
+      status: 500,
+    });
+  }
+  
+  // Calculate total invested manually
+  const totalInvertido = transaccionData.reduce(
+    (sum, transaction) => sum + (transaction.cantidad * transaction.precio),
+    0
+  );
+  
+  // Devolvemos tanto el dinero disponible como el total invertido
+  return new Response(
+    JSON.stringify({
+      dineroDisponible: portfolioData.dineroDisponible,
+      totalInvertido,
+    }),
+    {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
+    }
+  );
   } catch (err) {
     console.error("Error en la función:", err);
     return new Response("Error interno del servidor", {
@@ -99,7 +113,7 @@ const putBuy = async (req: Request): Promise<Response> => {
   try {
     console.log("Request recibido:", req);
     const body = await req.json();
-    const { tipoTransaccion, ticker, cantidad,precio, email } = body;
+    const { tipoTransaccion, ticker, cantidad, precio, email } = body;
 
     if (!ticker || !precio || !cantidad) {
       return new Response("Faltan datos de la compra", {
@@ -170,8 +184,8 @@ const putBuy = async (req: Request): Promise<Response> => {
       tipoTransaccion: "buy",
       ticker: ticker,
       cantidad: cantidad,
-      precio:precio,
-      id_portfolio:portfolioId
+      precio: precio,
+      id_portfolio: portfolioId,
     };
 
     const { data: transactionData, error: transactionError } = await supabase
